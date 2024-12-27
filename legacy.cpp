@@ -1,46 +1,42 @@
 #include <iostream>
+#include <unordered_map>
 #include <array>
 #include <chrono>
 #include <random>
 #include <thread>
 #include <vector>
 
-struct KeyValue {
-    int key;
-    std::array<unsigned char, 16> value;
-};
-
-void generateUUIDs(KeyValue* keyValueStore, int start, int end, std::random_device& rd) {
+void generateUUIDs(std::unordered_map<int, std::array<unsigned char, 16>>& keyValueStore, int start, int end) {
+    std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> dis(0, 255);
 
     for (int i = start; i < end; ++i) {
-        keyValueStore[i].key = i; // Assign key
+        std::array<unsigned char, 16> rawUUID;
         for (int j = 0; j < 16; ++j) {
-            keyValueStore[i].value[j] = dis(gen); // Assign random value
+            rawUUID[j] = dis(gen);
         }
+        keyValueStore[i] = std::move(rawUUID); // Use move semantics to avoid copy
     }
 }
 
 int main() {
-    const int numThreads = 16;
+    const int numThreads = 1;
     const int numUUIDs = 1000000;
 
-    // Create an array of key-value pairs
-    std::vector<KeyValue> keyValueStore(numUUIDs);
+    // Create a vector of threads
+    std::vector<std::thread> threads;
+    std::unordered_map<int, std::array<unsigned char, 16>> keyValueStore;
+    keyValueStore.reserve(numUUIDs);  // Pre-allocate space for 1 million elements
 
-    // Create a random device to be used by each thread
-    std::random_device rd;
-
-    // Calculate the range of work for each thread
+    // Divide the work among 16 threads
     auto start = std::chrono::high_resolution_clock::now();
     int blockSize = numUUIDs / numThreads;
-    
-    std::vector<std::thread> threads;
+
     for (int t = 0; t < numThreads; ++t) {
         int startIdx = t * blockSize;
         int endIdx = (t == numThreads - 1) ? numUUIDs : (t + 1) * blockSize;
-        threads.push_back(std::thread(generateUUIDs, keyValueStore.data(), startIdx, endIdx, std::ref(rd)));
+        threads.push_back(std::thread(generateUUIDs, std::ref(keyValueStore), startIdx, endIdx));
     }
 
     // Join all threads
@@ -55,4 +51,3 @@ int main() {
 
     return 0;
 }
-
