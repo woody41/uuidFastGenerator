@@ -51,6 +51,7 @@ int main() {
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
     std::cout << "Time taken with 16 threads: " << duration.count() << " seconds" << std::endl;
+    std::cout << "Size: " << keyValueStore.size() << std::endl;
 
     return 0;
 }
